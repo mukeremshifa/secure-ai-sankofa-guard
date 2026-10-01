@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sankofa Guard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23f5b301'/><path d='M16 5l9 4v7c0 5-4 9-9 11-5-2-9-6-9-11V9z' fill='%230b0f14'/></svg>">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root { --bg:#0b0f14; --panel:#121923; --line:#223044; --gold:#f5b301; }
+  body { background:var(--bg); color:#e6edf5; font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; }
+  .chip { display:inline-flex; align-items:center; gap:.4rem; padding:.18rem .55rem; border-radius:999px; font-size:.72rem; font-weight:600; border:1px solid transparent; }
+  .c-pass { background:#0f2e1f; color:#4ade80; border-color:#14532d; }
+  .c-block{ background:#3a1218; color:#fb7185; border-color:#7f1d1d; }
+  .c-flag { background:#33280a; color:#fbbf24; border-color:#78350f; }
+  .c-warn { background:#33280a; color:#fbbf24; border-color:#78350f; }
+  .c-info { background:#10223a; color:#7dd3fc; border-color:#1e3a5f; }
+  .bubble-user { background:#1b2a3d; }
+  .bubble-bot { background:#161f2b; }
+  .tab-on { color:#0b0f14; background:var(--gold); }
+  .scroll { scrollbar-width:thin; scrollbar-color:#2a3b52 transparent; }
+  .mono { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+  .spin { width:14px;height:14px;border:2px solid #334155;border-top-color:var(--gold);border-radius:50%;animation:s .8s linear infinite;display:inline-block }
+  @keyframes s { to { transform:rotate(360deg) } }
+  td, th { padding:.45rem .6rem; text-align:left; vertical-align:top; }
+</style>
+</head>
+<body class="min-h-screen">
+<header class="px-5 py-3 flex flex-wrap items-center gap-4 border-b" style="border-color:var(--line)">
+  <div class="flex items-center gap-3">
+    <svg width="34" height="34" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#f5b301"/><path d="M16 5l9 4v7c0 5-4 9-9 11-5-2-9-6-9-11V9z" fill="#0b0f14"/><path d="M12 15l3 3 5-6" stroke="#f5b301" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div><div class="text-lg font-bold leading-tight">Sankofa Guard</div>
+    <div class="text-xs text-slate-400">Defense-in-depth around the SecureAI Guard · protecting <b>SikaBot</b></div></div>
+  </div>
+  <nav class="flex gap-1 ml-4 text-sm font-semibold" id="tabs">
+    <button data-tab="live" class="px-3 py-1.5 rounded-lg">Live demo</button>
+    <button data-tab="play" class="px-3 py-1.5 rounded-lg">Attack playground</button>
+    <button data-tab="bench" class="px-3 py-1.5 rounded-lg">Benchmark</button>
+    <button data-tab="arch" class="px-3 py-1.5 rounded-lg">Architecture</button>
+  </nav>
+  <div class="ml-auto flex flex-wrap items-center gap-3 text-xs">
+    <label class="flex items-center gap-1.5">System prompt
+      <select id="mode" class="bg-slate-800 border border-slate-600 rounded px-2 py-1"><option value="typical">typical</option><option value="hardened">hardened</option></select></label>
+    <label class="flex items-center gap-1.5">Model <select id="model" class="bg-slate-800 border border-slate-600 rounded px-2 py-1"></select></label>
+    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="outage"> Simulate Guard outage</label>
+    <div id="usage" class="chip c-info mono" title="Guard quota (team-wide)">usage …</div>
+  </div>
+</header>
+
+<main class="p-4 max-w-[1500px] mx-auto">
+<!-- LIVE -->
+<section id="tab-live">
+  <div class="flex flex-wrap items-center gap-2 mb-3 text-xs" id="quick"></div>
+  <div class="grid md:grid-cols-2 gap-4">
+    <div class="panel flex flex-col h-[66vh]">
+      <div class="px-4 py-2.5 border-b flex items-center justify-between" style="border-color:var(--line)">
+        <div><div class="font-bold text-rose-300">Guard only</div><div class="text-xs text-slate-400">naive integration · fails open if the Guard is down</div></div>
+        <span class="chip c-info mono" id="lat-left"></span></div>
+      <div id="left" class="flex-1 overflow-y-auto scroll p-4 space-y-4"></div>
+    </div>
+    <div class="panel flex flex-col h-[66vh]" style="border-color:#5b4a14">
+      <div class="px-4 py-2.5 border-b flex items-center justify-between" style="border-color:#5b4a14">
+        <div><div class="font-bold text-amber-300">Guard + Sankofa</div><div class="text-xs text-slate-400">input hook → Guard → LLM → output hook → Guard</div></div>
+        <span class="chip c-info mono" id="lat-right"></span></div>
+      <div id="right" class="flex-1 overflow-y-auto scroll p-4 space-y-4"></div>
+    </div>
+  </div>
+  <form id="form" class="mt-3 flex gap-2">
+    <input id="msg" autocomplete="off" placeholder="Type a customer message, or fire an attack preset above…" class="flex-1 panel px-4 py-3 outline-none focus:border-amber-400 text-sm">
+    <button id="send" class="px-5 rounded-xl font-bold text-slate-900" style="background:var(--gold)">Send</button>
+    <button type="button" id="reset" class="px-4 rounded-xl panel text-sm">Reset</button>
+  </form>
+</section>
+
+<!-- PLAYGROUND -->
+<section id="tab-play" hidden>
+  <p class="text-slate-400 text-sm mb-4 max-w-3xl">Each card is a real weakness measured in the SecureAI Guard. Click to fire it at both pipelines side by side. Tip: use the <b>typical</b> system prompt — the hardened one sometimes refuses on its own, which is exactly why you can't rely on the model.</p>
+  <div id="cards" class="grid md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+</section>
+
+<!-- BENCHMARK -->
+<section id="tab-bench" hidden>
+  <div id="bench-body" class="text-slate-400 text-sm">Loading…</div>
+</section>
+
+<!-- ARCH -->
+<section id="tab-arch" hidden>
+  <div class="panel p-4"><img src="/docs-img/architecture.svg" alt="Sankofa architecture" class="w-full max-w-[1200px] mx-auto"></div>
+</section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sid = Math.random().toString(36).slice(2);
+let busy = false, presets = [];
+
+// ---- tabs
+function showTab(t) {
+  for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('tab-on', b.dataset.tab === t);
+  for (const n of ['live','play','bench','arch']) $('#tab-'+n).hidden = n !== t;
+  if (t === 'bench') loadBench();
+}
+$('#tabs').onclick = e => e.target.dataset.tab && showTab(e.target.dataset.tab);
+
+// ---- usage meter
+async function usage() {
+  try {
+    const u = await (await fetch('/api/usage')).json();
+    const r = u.remote || {};
+    $('#usage').textContent = r.used_today != null ? `Guard ${r.used_today}/${r.daily_limit} today · ${u.local.cache_hits} cached` : `Guard usage n/a`;
+    $('#usage').className = 'chip mono ' + (r.used_today > 0.85*(r.daily_limit||1000) ? 'c-block' : 'c-info');
+  } catch { $('#usage').textContent = 'usage n/a'; }
+}
+
+// ---- rendering
+const STATUS_ICON = {pass:'✓', block:'✕', flag:'⚑', warn:'!', info:'•'};
+function steps(list) {
+  return list.map(s => `<div class="flex items-start gap-2 text-xs mt-1.5">
+    <span class="chip c-${s.status} shrink-0">${STATUS_ICON[s.status]} ${esc(s.layer)}</span>
+    <div class="min-w-0"><span class="font-semibold">${esc(s.title)}</span>
+    ${s.ms != null ? `<span class="mono text-slate-400"> · ${s.ms} ms</span>` : ''}${s.cached ? '<span class="text-slate-400"> · cached</span>' : ''}
+    ${s.detail ? `<div class="text-slate-400 break-words">${esc(s.detail)}</div>` : ''}</div></div>`).join('');
+}
+function verdict(t) {
+  if (t.leaked) return `<span class="chip c-block">☠ SECRET LEAKED to the customer — ${esc(t.leak_hits.join('; '))}</span>`;
+  const m = {delivered:['c-pass','✓ Delivered'], redacted:['c-flag','⚑ Delivered (PII redacted)'], blocked:['c-block','✕ Blocked']}[t.outcome];
+  return `<span class="chip ${m[0]}">${m[1]}</span>`;
+}
+function addTurn(col, text, pending) {
+  const el = document.createElement('div');
+  el.innerHTML = `<div class="bubble-user rounded-xl px-3 py-2 text-sm break-words whitespace-pre-wrap">${esc(text)}</div>
+    <div class="mt-2 slot"><span class="spin"></span> <span class="text-xs text-slate-400">checking…</span></div>`;
+  col.appendChild(el); col.scrollTop = col.scrollHeight; return el.querySelector('.slot');
+}
+function fill(slot, t, col) {
+  slot.innerHTML = `<div class="rounded-xl border px-3 py-2.5 ${t.leaked ? 'border-rose-700 bg-rose-950/40' : ''}" style="${t.leaked ? '' : 'border-color:var(--line)'}">
+    <div class="flex items-center justify-between gap-2 mb-1.5">${verdict(t)}<span class="mono text-xs text-slate-400">${t.total_ms} ms total</span></div>
+    ${steps(t.steps)}
+    <div class="bubble-bot rounded-lg px-3 py-2 mt-2.5 text-sm whitespace-pre-wrap break-words">${esc(t.reply)}</div></div>`;
+  col.scrollTop = col.scrollHeight;
+}
+
+async function send(text) {
+  if (busy || !text.trim()) return;
+  busy = true; $('#send').disabled = true;
+  const l = addTurn($('#left'), text), r = addTurn($('#right'), text);
+  try {
+    const res = await fetch('/api/chat', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+      session_id: sid, message: text, system_mode: $('#mode').value, model: $('#model').value, simulate_outage: $('#outage').checked})});
+    if (!res.ok) throw new Error((await res.json()).detail || res.status);
+    const d = await res.json();
+    fill(l, d.guard_only, $('#left')); fill(r, d.sankofa, $('#right'));
+    $('#lat-left').textContent = d.guard_only.total_ms + ' ms'; $('#lat-right').textContent = d.sankofa.total_ms + ' ms';
+  } catch (e) {
+    for (const s of [l, r]) s.innerHTML = `<span class="chip c-warn">error: ${esc(e.message)}</span>`;
+  }
+  busy = false; $('#send').disabled = false; usage();
+}
+async function runPreset(p) {
+  showTab('live');
+  for (const t of p.turns) { await send(t); }
+}
+$('#form').onsubmit = e => { e.preventDefault(); const v = $('#msg').value; $('#msg').value = ''; send(v); };
+$('#reset').onclick = async () => { await fetch('/api/reset', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({session_id: sid})}); $('#left').innerHTML = $('#right').innerHTML = ''; $('#lat-left').textContent = $('#lat-right').textContent = ''; };
+
+// ---- presets
+async function loadPresets() {
+  presets = await (await fetch('/api/presets')).json();
+  $('#quick').innerHTML = '<span class="text-slate-400">Attacks:</span>' + presets.map((p,i) =>
+    `<button data-i="${i}" class="chip c-info cursor-pointer hover:brightness-125">${esc(p.weakness)} · ${esc(p.title)}</button>`).join('');
+  $('#quick').onclick = e => e.target.dataset.i != null && runPreset(presets[e.target.dataset.i]);
+  $('#cards').innerHTML = presets.map((p,i) => `<div class="panel p-4 flex flex-col">
+    <div class="flex items-center gap-2 mb-1"><span class="chip ${p.weakness==='—'?'c-pass':'c-block'}">${esc(p.weakness)}</span><div class="font-bold">${esc(p.title)}</div></div>
+    <p class="text-sm text-slate-400 flex-1">${esc(p.explain)}</p>
+    <div class="mono text-[11px] text-slate-500 mt-2 break-all max-h-16 overflow-hidden">${esc(p.turns[0])}</div>
+    <button data-i="${i}" class="mt-3 py-2 rounded-lg font-bold text-sm text-slate-900" style="background:var(--gold)">Fire${p.turns.length>1?` (${p.turns.length} turns)`:''} ▶</button></div>`).join('');
+  $('#cards').onclick = e => e.target.dataset.i != null && runPreset(presets[e.target.dataset.i]);
+}
+
+// ---- benchmark
+let chart;
+async function loadBench() {
+  const box = $('#bench-body');
+  let d;
+  try { const r = await fetch('/api/benchmark'); if (!r.ok) throw 0; d = await r.json(); }
+  catch { box.textContent = 'benchmark_results.json not found — run: python scripts/run_benchmark.py'; return; }
+  const g = d.summary.guard_only, s = d.summary.sankofa;
+  const tile = (label, a, b, unit, good) => `<div class="panel p-4"><div class="text-xs text-slate-400 mb-2">${label}</div>
+    <div class="flex items-end gap-4"><div><div class="text-3xl font-extrabold text-rose-300">${a}${unit}</div><div class="text-[11px] text-slate-400">Guard only</div></div>
+    <div class="text-slate-500 pb-3">→</div><div><div class="text-3xl font-extrabold text-emerald-300">${b}${unit}</div><div class="text-[11px] text-slate-400">+ Sankofa</div></div></div></div>`;
+  const cats = Object.keys(g.by_category);
+  box.className = '';
+  box.innerHTML = `
+    <div class="text-xs text-slate-400 mb-3">${g.attacks} attacks + ${g.benign} benign prompts · model <b>${esc(d.model)}</b> · system prompt <b>${esc(d.system_mode)}</b> · generated ${esc(d.generated_utc)} · ${d.guard_calls} live Guard calls · Sankofa's local layers add ≈ ${d.local_overhead_ms} ms/message</div>
+    <div class="grid md:grid-cols-4 gap-4 mb-4">
+      ${tile('Attacks NOT caught (bypass rate)', g.bypass_pct, s.bypass_pct, '%')}
+      ${tile('Secrets actually leaked', g.leaks, s.leaks, '')}
+      ${tile('Benign false-block rate', g.false_block_pct, s.false_block_pct, '%')}
+      ${tile('Guard lookups per prompt (cache incl.)', g.guard_lookups_per_item, s.guard_lookups_per_item, '')}
+    </div>
+    <div class="panel p-4 mb-4"><div class="font-bold mb-1">Bypass rate by attack class</div><div class="text-xs text-slate-400 mb-2">"Not caught" = no block/redaction fired. For secret-exfiltration and multi-turn classes the model sometimes refused on its own, so <i>leaks</i> (tile above) are the real-impact number.</div><div class="h-72"><canvas id="chart"></canvas></div></div>
+    <div class="panel p-2 overflow-x-auto"><table class="w-full text-xs"><thead class="text-slate-400"><tr><th>ID</th><th>Class</th><th>Prompt</th><th>Guard only</th><th>+ Sankofa</th></tr></thead><tbody>
+    ${d.items.map(it => { const cell = r => { const bad = it.malicious ? !r.caught : r.caught;
+        return `<span class="chip ${bad ? 'c-block' : 'c-pass'}">${it.malicious ? (r.caught ? 'caught' : (r.leaked ? 'LEAKED' : 'missed')) : (r.caught ? 'false block' : 'ok')}</span>`; };
+      return `<tr class="border-t" style="border-color:var(--line)"><td class="mono">${esc(it.id)}</td><td>${esc(it.weakness)}</td><td class="max-w-xl break-all text-slate-300">${esc(it.turns[it.turns.length-1].slice(0,140))}${it.turns.length>1?` <span class="text-slate-500">(+${it.turns.length-1} earlier turns)</span>`:''}</td><td>${cell(it.guard_only)}</td><td>${cell(it.sankofa)}</td></tr>`; }).join('')}
+    </tbody></table></div>`;
+  if (chart) chart.destroy();
+  chart = new Chart($('#chart'), {type:'bar', data:{labels: cats, datasets:[
+    {label:'Guard only', data: cats.map(c => g.by_category[c].bypass_pct), backgroundColor:'#fb7185'},
+    {label:'Guard + Sankofa', data: cats.map(c => s.by_category[c].bypass_pct), backgroundColor:'#34d399'}]},
+    options:{maintainAspectRatio:false, scales:{y:{max:100, ticks:{color:'#94a3b8', callback:v=>v+'%'}, grid:{color:'#223044'}}, x:{ticks:{color:'#cbd5e1'}, grid:{display:false}}},
+      plugins:{legend:{labels:{color:'#e6edf5'}}}}});
+}
+
+// ---- init
+(async () => {
+  const cfg = await (await fetch('/api/config')).json();
+  $('#model').innerHTML = cfg.models.map(m => `<option ${m===cfg.default_model?'selected':''}>${m}</option>`).join('');
+  await loadPresets(); showTab('live'); usage();
+})();
+</script>
+</body>
+</html>
