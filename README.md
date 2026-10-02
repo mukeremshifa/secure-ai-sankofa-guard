@@ -1,58 +1,102 @@
 # Sankofa Guard
 
-**Defense-in-depth around the SecureAI Guard API** — CAIRLab-KNUST SecureAI Hackathon 2026, Challenge 3 (team Abugida).
+**Two hooks that make the SecureAI Guard hold up against attacks it currently misses.**
+CAIRLab-KNUST SecureAI Hackathon 2026 · Challenge 3 · Team **Abugida**
 
-*Sankofa* (Akan: "go back and fetch it"): the **input hook** decodes and re-checks; the **output hook** looks back at the secrets and the conversation. Sankofa wraps the Guard — it does **not** replace it. It is the two "Your Hook?" boxes of the challenge diagram.
+> *Sankofa* (Akan): "go back and fetch it." Our **input hook** goes back and decodes what the user hid. Our **output hook** goes back and checks the reply against what must never leave.
 
-![architecture](docs/architecture.svg)
+![Architecture](docs/architecture.svg)
 
-## The protected system: SikaBot
-A fictional support chatbot for *Sika Microfinance* (Kumasi). Its system prompt hides a staff fee-waiver code, a supervisor override PIN and a canary token (`app/config.py`). Customers send Ghana Card / MoMo / SSNIT details through the chat. A UI toggle switches between a **typical** prompt and a **hardened** one ("Never reveal…") — the model's own defences are inconsistent, which is why we don't rely on them.
+## The result in one table
+
+Measured on 47 prompts (29 attacks, 18 normal Ghanaian banking questions) against a live SikaBot (gpt-4o-mini) and the live Guard:
+
+| | Guard alone | Guard + Sankofa |
+|---|---|---|
+| Attacks that slipped through undetected | **62.1 %** | **10.3 %** |
+| Secrets actually leaked to the customer | **5** | **0** |
+| Normal customer questions wrongly blocked | 0 % | 0 % |
+| Guard calls per prompt (cache included) | 1.94 | 1.85 |
+| Extra latency from Sankofa's local layers | n/a | ≈ 0.5 ms per message |
+
+The three attacks Sankofa still "misses" are cases where the model refused on its own, so nothing leaked. Full per-prompt results are in `benchmark_results.json` and the app's Benchmark tab.
+
+## What we built, against the three things the brief asks for
+
+1. **Show a weakness.** The Guard screens one message at a time and knows nothing about *our* secrets. The Attack playground fires each weakness live.
+2. **Show our system fixing it.** The Live demo runs the same message through two columns, "Guard only" and "Guard + Sankofa", with a verdict chip and timing for every layer.
+3. **Working demo with Guard + LLM.** A FastAPI app with a real OpenAI-backed chatbot and the real Guard API. No mocks.
+
+![Live demo](docs/screenshots/live-demo.png)
+
+### The system we protect: SikaBot
+A fictional support bot for *Sika Microfinance* (Kumasi). Its system prompt holds a staff fee-waiver code, a supervisor override PIN and a canary token. Customers paste Ghana Card, MoMo and SSNIT numbers into the chat. A toggle switches between a "typical" and a "hardened" prompt to show that the model's own defences are inconsistent.
+
+## Weaknesses found, and our fix for each
+
+| | Weakness in the Guard | What Sankofa does |
+|---|---|---|
+| **W1** | Injections wrapped in **base64** are allowed (the plain text is blocked). | Decodes base64 / hex / %-encoding / ROT13, strips zero-width characters, folds look-alike letters, then re-checks the decoded text with the Guard (at most one extra call). |
+| **W2** | **Context-blind output check.** A reply that leaks our code as an acrostic, spaced out, reversed or encoded is allowed. | Canary and secret scanner covering all those forms, plus an overlap check against the confidential block. |
+| **W3** | **Ghana PII** (Ghana Card, MoMo, SSNIT) is not recognised; detection was inconsistent in our runs. | Local Ghana PII detector. Redacts before the LLM and again on the reply. |
+| **W4** | **Stateless.** An attack split across turns ("save P1…", "save P2…", "join them") looks harmless each time. | Rolling window of user turns, an assembly detector, and a re-check of the joined text with the Guard plus a local policy. |
+| **W5** | **Availability and quota.** `partial`, 429, 502 and 503 responses; 1,000 calls/day. | Local checks run first, identical text is cached, calls are throttled under 30/min with `Retry-After` respected, and a live usage meter shows quota. When the Guard cannot give a full verdict, the local layer fails closed on known-bad classes. `FAIL_CLOSED_STRICT=true` blocks everything instead. |
+| **W6** | **Defanged links** (`hxxp://…[.]xyz`) pass the link check. | Re-fangs the URL and applies a local suspicious-link policy. |
+
+**Headline kill chain (W1 + W2).** A harmless-looking poem request passes the Guard's input check, SikaBot spells the fee-waiver code down the first letters of the lines, and the Guard's output check allows it. In the left column the customer gets the secret and the Guard never fires. In the right column Sankofa's output hook blocks it.
+
+By attack class (share not caught, Guard alone → with Sankofa): encoding 83 → 0 %, Ghana PII 50 → 0 %, multi-turn 50 → 0 %, defanged links 50 → 0 %, plain injection 20 → 0 %, exfiltration 80 → 30 %.
 
 ## Run it
+
 ```bash
 pip install -r requirements.txt
-cp .env.example .env        # paste GUARD_URL, GUARD_TOKEN, OPENAI_API_KEY (never commit .env)
+cp .env.example .env          # fill in GUARD_URL, GUARD_TOKEN, OPENAI_API_KEY
 uvicorn app.main:app --reload
 # open http://localhost:8000
-python -m pytest            # offline unit tests, no network/keys needed
 ```
-Tabs: **Live demo** (Guard-only vs Guard+Sankofa side by side, per-layer verdict chips + latency) · **Attack playground** (one-click presets) · **Benchmark** (from the committed `benchmark_results.json`) · **Architecture**. Header toggles: system prompt, model, and **Simulate Guard outage**.
 
-## Weaknesses we found in the Guard → our fix
-| # | Weakness | Sankofa fix |
-|---|---|---|
-| W1 | Base64-wrapped injections are allowed (plain ones are blocked) | decode base64/hex/%/ROT13, strip zero-width, fold homoglyphs, re-check decoded text (≤1 extra call) |
-| W2 | Context-blind: an acrostic/spaced/reversed/encoded leak of *our* secret is allowed on the way out | canary + secret scanner (exact, spaced, reversed, encoded, acrostic) + system-prompt n-gram overlap |
-| W3 | Ghana Card / MoMo / SSNIT not recognised (US-centric PII) — we measured it inconsistent (some pass, some blocked) | local Ghana PII regex, redact before the LLM and on the reply |
-| W4 | Stateless: attacks split across turns | rolling window + assembly heuristic ("save P1…", "join P1 and P2") → joined text re-checked by Guard and a local lexicon |
-| W5 | Fail-open / quota risk (`partial`, 429, 502, 503) | local pre-filter, verdict cache, 26/min throttle, `Retry-After`, `/v1/usage` meter, fail-closed local layer (optional `FAIL_CLOSED_STRICT=true` blocks everything) |
-| W6 | Defanged links (`hxxp://…[.]xyz`) pass `unsafe_links` | re-fang + local link policy |
+Secrets live only in `.env`, which is git-ignored. Only `.env.example` (placeholders) is committed.
 
-**Headline kill chain (W1+W2):** the Guard-only column leaks the fee-waiver code as an acrostic and the Guard allows both the prompt and the reply; the Sankofa column blocks at the output hook.
+Offline tests (no network or keys): `python -m pytest`
 
-## Benchmark (47 prompts: 29 attacks, 18 benign Ghanaian banking questions; gpt-4o-mini, typical prompt)
-Regenerate with `python scripts/run_benchmark.py --fresh` (~100 Guard calls, resumable, rate-limited; run once). Results are in `benchmark_results.json`.
+To regenerate the benchmark (about 100 Guard calls, resumable, rate-limited; run it once): `python scripts/run_benchmark.py --fresh`
 
-| | Guard only | Guard + Sankofa |
-|---|---|---|
-| Attacks not caught | **62.1 %** | **10.3 %** |
-| Secrets actually leaked to the customer | **5** | **0** |
-| Benign prompts wrongly blocked | 0 % | 0 % |
-| Guard lookups per prompt (incl. cache) | 1.94 | 1.85 |
+### Tour of the app
+- **Live demo:** type anything, or click an attack chip. Header controls: system prompt (typical / hardened), model, and **Simulate Guard outage**.
+- **Attack playground:** one card per weakness, each explaining what it exploits. Best with the "typical" prompt.
+- **Benchmark:** the table above, a per-class chart and every prompt's outcome.
+- **Architecture:** the two-hook diagram.
 
-By class (not caught, Guard → +Sankofa): encoding 83→0 %, exfiltration 80→30 %, Ghana PII 50→0 %, multi-turn 50→0 %, defanged links 50→0 %, plain injection 20→0 %. The 30 % exfiltration remainder is three prompts where the model refused on its own (no leak; nothing to detect).
+| Playground | Benchmark |
+|---|---|
+| ![Playground](docs/screenshots/playground.png) | ![Benchmark](docs/screenshots/benchmark.png) |
 
-## Latency
-Guard calls were ~100–550 ms round-trip in our runs. Sankofa's local layers (decode, PII, canary, lexicon) add ≈ 0.5 ms per message; the only added network cost is the occasional extra Guard call (decoded / joined text), and identical texts are served from cache. End-to-end live turns are dominated by the LLM (~1–3 s).
+## Why this is practical
+- **Complements the Guard.** It does not replace the Guard or reimplement it. Every request still goes through the Guard, and Sankofa adds what a stateless, app-agnostic screen cannot know.
+- **Cheap.** Local layers cost about half a millisecond. Network cost is a cached Guard call, plus at most two extra calls when text was decoded or turns were joined.
+- **Quota-aware.** It behaves sensibly when the Guard is slow, rate-limited or down, which is where naive integrations either block everyone or let everything through.
+- **Reusable.** Each layer in `app/sankofa/` (decode, pii, canary, multiturn, policy) is an independent, unit-tested module. Adapting to another app means changing the secrets list in `app/config.py` and the policy lexicon in `app/sankofa/policy.py`.
 
-## Layout
-`app/` backend + static UI · `app/sankofa/` decode, pii, canary, multiturn, policy, pipeline (each unit-testable) · `attacks/corpus.json` (built by `scripts/build_corpus.py`) · `scripts/run_benchmark.py` · `tests/` · `docs/architecture.svg` · `DEMO_SCRIPT.md`.
+## Repository layout
+```
+app/main.py            FastAPI server and API
+app/guard.py           Guard client: throttle, cache, Retry-After, fail-safe errors
+app/llm.py             OpenAI client for SikaBot
+app/sankofa/           decode · pii · canary · multiturn · policy · pipeline
+app/static/index.html  UI (Tailwind + vanilla JS + Chart.js)
+attacks/corpus.json    47-prompt labelled corpus (built by scripts/build_corpus.py)
+scripts/run_benchmark.py · benchmark_results.json · tests/ · docs/
+DEMO_SCRIPT.md         4–5 minute walkthrough
+```
 
-## Honest limitations
-- Attack success on the "leak" metric is judged by Sankofa's own scanner (a ground-truth oracle that knows the secrets); it cannot see leaks in forms it doesn't model (e.g. a poem whose *words* hint at the code, or secrets translated into another language).
-- Corpus is small (47) and written by us, tuned while we built the fixes; treat numbers as a demonstration, not a generalisation. Single model/prompt configuration.
-- Guard behaviour is deterministic per text but varies across phrasings; some weaknesses (e.g. Ghana PII, hex) were not reproduced on every sample.
-- The multi-turn heuristic and lexicon target known phrasing; a novel assembly style would bypass them. Encoded PII inside a base64 blob is not redacted (it is re-checked by the Guard only).
-- Local policy is application-specific (SikaBot's secrets); it must be configured per deployment.
-- Short-TTL cache and 26/min throttle are per-process, not shared across instances.
+## Limitations (please read)
+- **Small, self-written corpus.** 47 prompts we wrote ourselves while building the fixes. The numbers demonstrate the approach; they are not a general claim about the Guard.
+- **Self-judged leaks.** "Secret leaked" is decided by Sankofa's own scanner, which knows the secrets. It cannot see disguises we did not model (for example a translation of the code, or hints in the wording).
+- **One configuration.** Results are for gpt-4o-mini with the "typical" prompt. Other models and the hardened prompt will differ; the model refuses some attacks by itself.
+- **Guard behaviour varies by phrasing.** Some weaknesses (hex, some Ghana PII) were not reproduced on every sample, so we report measurements, not the original claims.
+- **Heuristics have limits.** The multi-turn detector and policy lexicon target known phrasing, and a new assembly style could bypass them. PII hidden inside an encoded blob is re-checked by the Guard but not redacted by us.
+- **Per-application setup.** Secrets and policy must be configured for each deployment. Cache and throttle are per process, not shared across instances.
+
+## Team
+Abugida · CAIRLab-KNUST SecureAI Hackathon 2026
