@@ -1,50 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" font-family="Segoe UI, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" font-family="Instrument Sans, Segoe UI, system-ui, sans-serif">
   <defs>
-    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#94a3b8"/></marker>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#a3a3a3"/></marker>
   </defs>
-  <rect width="1200" height="640" fill="#0b0f14"/>
+  <rect width="1200" height="640" fill="#0a0a0a"/>
   <text x="600" y="38" text-anchor="middle" fill="#f5b301" font-size="22" font-weight="700">Sankofa Guard — two hooks around the SecureAI Guard</text>
-  <text x="600" y="60" text-anchor="middle" fill="#94a3b8" font-size="13">"go back and fetch it": decode and re-check on the way in, look back at the secrets on the way out</text>
+  <text x="600" y="60" text-anchor="middle" fill="#a3a3a3" font-size="13">"go back and fetch it": decode and re-check on the way in, look back at the secrets on the way out</text>
 
   <!-- main flow -->
   <g font-size="14" text-anchor="middle">
-    <rect x="30" y="250" width="110" height="64" rx="12" fill="#1b2a3d" stroke="#223044"/><text x="85" y="278" fill="#e6edf5" font-weight="700">Customer</text><text x="85" y="298" fill="#94a3b8" font-size="12">message</text>
-    <rect x="180" y="150" width="270" height="250" rx="14" fill="#2a2208" stroke="#f5b301" stroke-width="2"/>
+    <rect x="30" y="250" width="110" height="64" rx="12" fill="#1f1f1f" stroke="#262626"/><text x="85" y="278" fill="#ededed" font-weight="700">Customer</text><text x="85" y="298" fill="#a3a3a3" font-size="12">message</text>
+    <rect x="180" y="150" width="270" height="250" rx="14" fill="#221b07" stroke="#f5b301" stroke-width="2"/>
     <text x="315" y="176" fill="#f5b301" font-weight="700">Sankofa INPUT hook</text>
-    <g font-size="12" fill="#e6edf5">
-      <rect x="198" y="190" width="234" height="34" rx="8" fill="#161f2b"/><text x="315" y="212">1 Decode &amp; reveal (b64/hex/ROT13/%/zero-width/homoglyph/defang)</text>
-      <rect x="198" y="230" width="234" height="34" rx="8" fill="#161f2b"/><text x="315" y="252">2 Ghana PII redaction (Card · MoMo · SSNIT)</text>
-      <rect x="198" y="270" width="234" height="34" rx="8" fill="#161f2b"/><text x="315" y="292">3 Multi-turn accumulator (P1+P2 assembly)</text>
-      <rect x="198" y="310" width="234" height="34" rx="8" fill="#161f2b"/><text x="315" y="332">4 Link policy (re-fanged URLs)</text>
-      <rect x="198" y="350" width="234" height="34" rx="8" fill="#161f2b"/><text x="315" y="372">5 Policy: allow · redact · block (fail-closed)</text>
+    <g font-size="12" fill="#ededed">
+      <rect x="198" y="190" width="234" height="34" rx="8" fill="#171717"/><text x="315" y="212">1 Decode &amp; reveal (b64/hex/ROT13/%/zero-width/homoglyph/defang)</text>
+      <rect x="198" y="230" width="234" height="34" rx="8" fill="#171717"/><text x="315" y="252">2 Ghana PII redaction (Card · MoMo · SSNIT)</text>
+      <rect x="198" y="270" width="234" height="34" rx="8" fill="#171717"/><text x="315" y="292">3 Multi-turn accumulator (P1+P2 assembly)</text>
+      <rect x="198" y="310" width="234" height="34" rx="8" fill="#171717"/><text x="315" y="332">4 Link policy (re-fanged URLs)</text>
+      <rect x="198" y="350" width="234" height="34" rx="8" fill="#171717"/><text x="315" y="372">5 Policy: allow · redact · block (fail-closed)</text>
     </g>
-    <rect x="490" y="236" width="150" height="92" rx="12" fill="#10223a" stroke="#3b82f6" stroke-width="2"/>
-    <text x="565" y="266" fill="#7dd3fc" font-weight="700">SecureAI Guard</text><text x="565" y="287" fill="#94a3b8" font-size="12">/v1/check/prompt</text><text x="565" y="305" fill="#94a3b8" font-size="12">+ re-check of decoded /</text><text x="565" y="320" fill="#94a3b8" font-size="12">joined text (≤ 3 calls)</text>
-    <rect x="680" y="250" width="100" height="64" rx="12" fill="#1b2a3d" stroke="#223044"/><text x="730" y="278" fill="#e6edf5" font-weight="700">SikaBot</text><text x="730" y="298" fill="#94a3b8" font-size="12">LLM + secrets</text>
-    <rect x="820" y="150" width="270" height="250" rx="14" fill="#2a2208" stroke="#f5b301" stroke-width="2"/>
+    <rect x="490" y="236" width="150" height="92" rx="12" fill="#1a1a1a" stroke="#737373" stroke-width="2"/>
+    <text x="565" y="266" fill="#d4d4d4" font-weight="700">SecureAI Guard</text><text x="565" y="287" fill="#a3a3a3" font-size="12">/v1/check/prompt</text><text x="565" y="305" fill="#a3a3a3" font-size="12">+ re-check of decoded /</text><text x="565" y="320" fill="#a3a3a3" font-size="12">joined text (≤ 3 calls)</text>
+    <rect x="680" y="250" width="100" height="64" rx="12" fill="#1f1f1f" stroke="#262626"/><text x="730" y="278" fill="#ededed" font-weight="700">SikaBot</text><text x="730" y="298" fill="#a3a3a3" font-size="12">LLM + secrets</text>
+    <rect x="820" y="150" width="270" height="250" rx="14" fill="#221b07" stroke="#f5b301" stroke-width="2"/>
     <text x="955" y="176" fill="#f5b301" font-weight="700">Sankofa OUTPUT hook</text>
-    <g font-size="12" fill="#e6edf5">
-      <rect x="838" y="190" width="234" height="34" rx="8" fill="#161f2b"/><text x="955" y="212">1 Canary &amp; secret scan (exact · spaced · reversed ·</text><text x="955" y="226" font-size="11">encoded · acrostic)</text>
-      <rect x="838" y="230" width="234" height="34" rx="8" fill="#161f2b"/><text x="955" y="252">2 System-prompt n-gram overlap</text>
-      <rect x="838" y="270" width="234" height="34" rx="8" fill="#161f2b"/><text x="955" y="292">3 Ghana PII redaction on the reply</text>
-      <rect x="838" y="310" width="234" height="34" rx="8" fill="#161f2b"/><text x="955" y="332">4 Guard /v1/check/response</text>
-      <rect x="838" y="350" width="234" height="34" rx="8" fill="#161f2b"/><text x="955" y="372">5 Policy: deliver · redact · safe refusal</text>
+    <g font-size="12" fill="#ededed">
+      <rect x="838" y="190" width="234" height="34" rx="8" fill="#171717"/><text x="955" y="212">1 Canary &amp; secret scan (exact · spaced · reversed ·</text><text x="955" y="226" font-size="11">encoded · acrostic)</text>
+      <rect x="838" y="230" width="234" height="34" rx="8" fill="#171717"/><text x="955" y="252">2 System-prompt n-gram overlap</text>
+      <rect x="838" y="270" width="234" height="34" rx="8" fill="#171717"/><text x="955" y="292">3 Ghana PII redaction on the reply</text>
+      <rect x="838" y="310" width="234" height="34" rx="8" fill="#171717"/><text x="955" y="332">4 Guard /v1/check/response</text>
+      <rect x="838" y="350" width="234" height="34" rx="8" fill="#171717"/><text x="955" y="372">5 Policy: deliver · redact · safe refusal</text>
     </g>
-    <rect x="1110" y="250" width="70" height="64" rx="12" fill="#1b2a3d" stroke="#223044"/><text x="1145" y="278" fill="#e6edf5" font-weight="700">User</text><text x="1145" y="298" fill="#94a3b8" font-size="12">reply</text>
+    <rect x="1110" y="250" width="70" height="64" rx="12" fill="#1f1f1f" stroke="#262626"/><text x="1145" y="278" fill="#ededed" font-weight="700">User</text><text x="1145" y="298" fill="#a3a3a3" font-size="12">reply</text>
   </g>
-  <g stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#a)">
+  <g stroke="#a3a3a3" stroke-width="2" fill="none" marker-end="url(#a)">
     <path d="M140 282H178"/><path d="M450 282H488"/><path d="M640 282H678"/><path d="M780 282H818"/><path d="M1090 282H1108"/>
   </g>
 
   <!-- support layer -->
-  <rect x="180" y="440" width="910" height="150" rx="14" fill="#121923" stroke="#223044"/>
-  <text x="635" y="466" text-anchor="middle" fill="#e6edf5" font-weight="700" font-size="15">Availability &amp; quota layer (fixes W5)</text>
-  <g font-size="13" fill="#cbd5e1" text-anchor="middle">
-    <text x="330" y="505">Local pre-filter first</text><text x="330" y="525" fill="#94a3b8" font-size="12">obvious cases never spend a call</text>
-    <text x="520" y="505">Deterministic verdict cache</text><text x="520" y="525" fill="#94a3b8" font-size="12">identical text → no new call</text>
-    <text x="720" y="505">30/min throttle + Retry-After</text><text x="720" y="525" fill="#94a3b8" font-size="12">live /v1/usage meter</text>
-    <text x="940" y="505">Fail-closed local layer</text><text x="940" y="525" fill="#94a3b8" font-size="12">partial / 502 / 503 / 429 → local blocks known-bad</text>
+  <rect x="180" y="440" width="910" height="150" rx="14" fill="#111111" stroke="#262626"/>
+  <text x="635" y="466" text-anchor="middle" fill="#ededed" font-weight="700" font-size="15">Availability &amp; quota layer (fixes W5)</text>
+  <g font-size="13" fill="#d4d4d4" text-anchor="middle">
+    <text x="330" y="505">Local pre-filter first</text><text x="330" y="525" fill="#a3a3a3" font-size="12">obvious cases never spend a call</text>
+    <text x="520" y="505">Deterministic verdict cache</text><text x="520" y="525" fill="#a3a3a3" font-size="12">identical text → no new call</text>
+    <text x="720" y="505">30/min throttle + Retry-After</text><text x="720" y="525" fill="#a3a3a3" font-size="12">live /v1/usage meter</text>
+    <text x="940" y="505">Fail-closed local layer</text><text x="940" y="525" fill="#a3a3a3" font-size="12">partial / 502 / 503 / 429 → local blocks known-bad</text>
   </g>
-  <text x="635" y="568" text-anchor="middle" fill="#94a3b8" font-size="12">Sankofa is defense-in-depth AROUND the Guard, not a replacement: the two "Your Hook?" boxes of the challenge diagram.</text>
-  <path d="M315 400V440M955 400V440" stroke="#475569" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="635" y="568" text-anchor="middle" fill="#a3a3a3" font-size="12">Sankofa is defense-in-depth AROUND the Guard, not a replacement: the two "Your Hook?" boxes of the challenge diagram.</text>
+  <path d="M315 400V440M955 400V440" stroke="#525252" stroke-width="2" stroke-dasharray="5 4"/>
 </svg>
